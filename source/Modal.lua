@@ -31,12 +31,12 @@ function Modal:init()
     -- The text to render in the prompt to dismiss the modal
     local buttonText = nil
 
-    -- Pops a modal with the provided content
-    local function displayMessage(self, newMessage, newButtonText)
-        message = newMessage
-        buttonText = newButtonText
+    local showButton = true
 
-        -- Count the number of lines in the message so we can correctly offset where we draw it.
+    local function show(self, newMessage, newButtonText, withButton)
+        message = newMessage
+        showButton = withButton
+        buttonText = newButtonText
         lines = 1
 
         for _ in message:gmatch("\n") do
@@ -44,6 +44,14 @@ function Modal:init()
         end
 
         sprite:markDirty()
+    end
+
+    local function displayMessage(self, newMessage, newButtonText)
+        show(self, newMessage, newButtonText, true)
+    end
+
+    local function displayLoading(self, newMessage)
+        show(self, newMessage, nil, false)
     end
 
     local function dismiss(self)
@@ -80,23 +88,24 @@ function Modal:init()
                 kTextAlignment.center
             )
 
-            -- Draw the dismiss button
-            gfx.setFont(fonts.small)
+            if showButton then
+                gfx.setFont(fonts.small)
 
-            local buttonText <const> = buttonText or "OK"
-            local buttonTextWidth <const> = fonts.small:getTextWidth(buttonText)
+                local buttonText <const> = buttonText or "OK"
+                local buttonTextWidth <const> = fonts.small:getTextWidth(buttonText)
 
-            gfx.drawText(
-                "Ⓐ",
-                self.width - buttonTextWidth - buttonIconWidth - buttonMargin.x - buttonMargin.inner,
-                self.height - smallFontHeight - buttonMargin.y
-            )
+                gfx.drawText(
+                    "Ⓐ",
+                    self.width - buttonTextWidth - buttonIconWidth - buttonMargin.x - buttonMargin.inner,
+                    self.height - smallFontHeight - buttonMargin.y
+                )
 
-            gfx.drawText(
-                buttonText,
-                self.width - buttonTextWidth - buttonMargin.x,
-                self.height - smallFontHeight - buttonMargin.y
-            )
+                gfx.drawText(
+                    buttonText,
+                    self.width - buttonTextWidth - buttonMargin.x,
+                    self.height - smallFontHeight - buttonMargin.y
+                )
+            end
         end)
     end
 
@@ -107,5 +116,6 @@ function Modal:init()
     sprite:add()
 
     self.displayMessage = displayMessage
+    self.displayLoading = displayLoading
     self.dismiss = dismiss
 end

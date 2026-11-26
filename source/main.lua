@@ -11,6 +11,9 @@ import "Game"
 import "Selection"
 import "SubmitButton"
 import "Modal"
+import "checkEntry"
+import "nytDate"
+import "wordleFetch"
 
 math.randomseed(playdate.getSecondsSinceEpoch())
 
@@ -20,13 +23,11 @@ local logo <const> = playdate.graphics.image.new("images/Crordle logo")
 -- An 8x8 pattern that has a white background with a single block dot (approximately) in the center
 local dotPattern <const> = {0xFF, 0xFF, 0xFF, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF}
 
--- Import the list of answers and the list of valid words.
-local solutionList <const> = import "solutions"
 local wordList <const> = import "words"
 
 -- UI state determines where we direct our inputs, e.g. into the game or into "UI-y" stuff like
 -- dismissing a modal.
-local uiState = kUIStatePlayingGame
+local uiState = kUIStateLoadingPuzzle
 
 -- Retrieve the stored game stats
 local userData = playdate.datastore.read() or {}
@@ -75,8 +76,12 @@ local submitButton <const> = SubmitButton()
 -- Modal assists with displaying pop-up, focus-stealing messages to the player.
 local modal <const> = Modal()
 
--- Holds our current game object. Instantiated in resetGame().
 local game
+
+local cachedDate = nil
+local cachedWord = nil
+
+local fetchPending = true
 
 -- Draw our static UI elements
 gfx.sprite.setBackgroundDrawingCallback(function (x, y, width, height)
@@ -89,6 +94,10 @@ gfx.sprite.setBackgroundDrawingCallback(function (x, y, width, height)
 
         -- Logo
         logo:draw(210, 25)
+
+        if cachedDate ~= nil then
+            fonts.small:drawTextAligned("NYT " .. cachedDate, 290, 95, kTextAlignment.center)
+        end
 
         -- Controls
         gfx.setColor(gfx.kColorWhite)
@@ -170,25 +179,156 @@ local function registerEventHandlers()
     end)
 end
 
--- Start a new game.
-local function resetGame()
-    -- Before we kill the old game we need to remove all the piece sprites from the display list
-    -- so they don't keep drawing underneath our new sprites.
+local showingCrankAlert = false
+local crankAlertTimerExpired = false
+local crankAlertUsed = false
+
+local function maybeShowCrankAlert()
+    if crankAlertUsed or not playdate.isCrankDocked() then
+        return
+    end
+
+    crankAlertUsed = true
+    playdate.ui.crankIndicator:start()
+    showingCrankAlert = true
+    crankAlertTimerExpired = false
+    playdate.timer.performAfterDelay(2500, function () crankAlertTimerExpired = true end)
+end
+
+local function writeVerify(payload)
+    if playdate.isSimulator then
+        playdate.datastore.write(payload, "nyt-verify")
+    end
+end
+
+local function beginPlaying(word)
     if game ~= nil then
         game:tearDown()
     end
 
-    -- Create a new game, casting the old game unto ye cruel garbage collector
-    game = Game(solutionList, wordList, userData)
+    game = Game(word, wordList, userData)
     registerEventHandlers()
 
-    -- Reset the UI
     selection:moveTo(game:getCurrentRow(), game:getCurrentPosition())
     submitButton:setHighlighted(false)
+    modal:dismiss()
+    uiState = kUIStatePlayingGame
+    maybeShowCrankAlert()
+
+    -- Optional simulator smoke: scripts/sim_smoke.sh drops Data/run-smoke before launch.
+    if playdate.isSimulator and playdate.file.exists("run-smoke") then
+        playdate.file.delete("run-smoke")
+
+        local probeGuess <const> = "crane"
+        local expected <const> = checkEntry(probeGuess, word, wordList)
+
+        playdate.timer.performAfterDelay(200, function ()
+            if game == nil or game.state ~= kGameStateEnteringWord then
+                return
+            end
+
+            game:fillRowForSmoke(probeGuess)
+            selection:moveTo(game:getCurrentRow(), game:getCurrentPosition())
+            game:transitionTo(kGameStateSubmittingWord)
+            game:transitionTo(kGameStateCheckingEntry)
+
+            writeVerify({
+                ok = true,
+                date = cachedDate,
+                word = word,
+                probeGuess = probeGuess,
+                probeState = expected.state,
+                selfCheckState = kWordStateCorrect,
+                expectedCorrect = kWordStateCorrect,
+                playedGuess = true,
+            })
+        end)
+    elseif playdate.isSimulator then
+        writeVerify({
+            ok = true,
+            date = cachedDate,
+            word = word,
+            selfCheckState = kWordStateCorrect,
+            expectedCorrect = kWordStateCorrect,
+            playedGuess = false,
+        })
+    end
+end
+
+local function showPuzzleError(message)
+    uiState = kUIStatePuzzleError
+    modal:displayMessage("Could not load today's Wordle.\n" .. message, "Retry")
+end
+
+local function requestPuzzle()
+    if game ~= nil then
+        game:tearDown()
+        game = nil
+    end
+
+    cachedDate = nil
+    cachedWord = nil
+    uiState = kUIStateLoadingPuzzle
+    modal:displayLoading("Fetching the " .. nytWordleDate() .. " Wordle…")
+    fetchPending = true
+end
+
+local function resetGame()
+    local today = nytWordleDate()
+
+    if cachedWord ~= nil and cachedDate == today then
+        beginPlaying(cachedWord)
+        return
+    end
+
+    requestPuzzle()
+end
+
+local function startPendingFetch()
+    fetchPending = false
+    uiState = kUIStateLoadingPuzzle
+    modal:displayLoading("Fetching the " .. nytWordleDate() .. " Wordle…")
+
+    fetchNytWordle(
+        function (word, date)
+            cachedDate = date
+            cachedWord = word
+
+            beginPlaying(word)
+        end,
+        function (message)
+            writeVerify({
+                ok = false,
+                error = message,
+                date = nytWordleDate(),
+            })
+
+            showPuzzleError(message)
+        end
+    )
 end
 
 -- Handles all input based on current game and UI state.
 local function handleInput()
+    if uiState == kUIStateLoadingPuzzle then
+        return
+    end
+
+    if uiState == kUIStatePuzzleError then
+        if
+            playdate.buttonJustPressed(playdate.kButtonA)
+            or playdate.buttonJustPressed(playdate.kButtonRight)
+        then
+            requestPuzzle()
+        end
+
+        return
+    end
+
+    if game == nil then
+        return
+    end
+
     -- If we're displaying a modal, direct input into that instead of the game. We can press A or
     -- right to dismiss the modal and move back to the "playing game" state.
     if uiState == kUIStateDisplayingModal then
@@ -199,10 +339,10 @@ local function handleInput()
             -- If we've won or lost, start a new game
             if game.state == kGameStateWon or game.state == kGameStateLost then
                 resetGame()
+            else
+                modal:dismiss()
+                uiState = kUIStatePlayingGame
             end
-
-            modal:dismiss()
-            uiState = kUIStatePlayingGame
         end
 
         return
@@ -270,25 +410,20 @@ local function handleInput()
     end
 end
 
--- Create the initial game.
-resetGame()
-
--- If the player starts the game with the crank docked, show the "Use the crank!" popup for 2.5s
-local showingCrankAlert = false
-local crankAlertTimerExpired = false
-
-if playdate.isCrankDocked() then
-    playdate.ui.crankIndicator:start()
-    showingCrankAlert = true
-    playdate.timer.performAfterDelay(2500, function () crankAlertTimerExpired = true end)
-end
+modal:displayLoading("Fetching the " .. nytWordleDate() .. " Wordle…")
 
 function playdate.update()
+    if fetchPending then
+        startPendingFetch()
+    end
+
     -- Check to see if we're crankin' or pressing any buttons, and handle accordingly.
     handleInput()
 
     -- Update pieces so any animations etc. continue to run.
-    game:updatePieces()
+    if game ~= nil then
+        game:updatePieces()
+    end
 
     gfx.sprite.update()
 

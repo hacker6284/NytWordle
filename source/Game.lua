@@ -36,15 +36,10 @@ class('Game', {
     state = kGameStateEnteringWord
 }).extends()
 
-function Game:init(solutionList, wordList, userData)
+function Game:init(word, wordList, userData)
     Game.super.init(self)
 
-    -- Set the word for the game at random.
-    self.word = table.randomElement(solutionList)
-
-    if playdate.isSimulator then
-        print(self.word)
-    end
+    self.word = word
 
     -- Set default event handlers so we don't have to check if they're defined before firing them.
     local eventHandlers = {
@@ -224,6 +219,18 @@ function Game:init(solutionList, wordList, userData)
         end
     end
 
+    local function fillRowForSmoke(self, word)
+        assert(#word == letterCount)
+
+        for position = 1, letterCount do
+            board[currentRow][position].inPlay = true
+            board[currentRow][position]:setLetter(word:sub(position, position):upper())
+        end
+
+        currentPosition = letterCount
+        self:updatePieces()
+    end
+
     -- Bind public methods
     self.registerEventHandler = registerEventHandler
     self.getCurrentRow = getCurrentRow
@@ -233,5 +240,6 @@ function Game:init(solutionList, wordList, userData)
     self.moveLetter = moveLetter
     self.movePosition = movePosition
     self.updatePieces = updatePieces
+    self.fillRowForSmoke = fillRowForSmoke
     self.tearDown = tearDown
 end

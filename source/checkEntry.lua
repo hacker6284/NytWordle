@@ -72,9 +72,9 @@ function checkEntry(enteredWord, correctWord, wordList)
         letters = {}
     }
 
-    -- Check if the word is in our list.
-    if table.indexOfElement(wordList, enteredWord) == nil then
-        -- If it's not, we can exit immediately.
+    local isOfficialAnswer <const> = enteredWord == correctWord
+
+    if not isOfficialAnswer and table.indexOfElement(wordList, enteredWord) == nil then
         results.state = kWordStateNotInList
 
         return results
