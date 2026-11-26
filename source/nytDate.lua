@@ -1,6 +1,3 @@
--- nytDate.lua
--- Wordle's calendar day is the date in America/New_York, not device local time.
-
 local EST <const> = -5 * 3600
 local EDT <const> = -4 * 3600
 

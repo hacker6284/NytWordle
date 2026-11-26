@@ -39,7 +39,6 @@ class('Game', {
 function Game:init(word, wordList, userData)
     Game.super.init(self)
 
-    -- Official NYT solution for the current America/New_York Wordle day.
     self.word = word
 
     if playdate.isSimulator then
@@ -224,8 +223,7 @@ function Game:init(word, wordList, userData)
         end
     end
 
-    -- Simulator smoke helper. Puts a full word on the current row without cranking.
-    local function fillCurrentWord(self, word)
+    local function fillRowForSmoke(self, word)
         assert(#word == letterCount)
 
         for position = 1, letterCount do
@@ -246,6 +244,6 @@ function Game:init(word, wordList, userData)
     self.moveLetter = moveLetter
     self.movePosition = movePosition
     self.updatePieces = updatePieces
-    self.fillCurrentWord = fillCurrentWord
+    self.fillRowForSmoke = fillRowForSmoke
     self.tearDown = tearDown
 end

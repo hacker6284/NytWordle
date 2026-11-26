@@ -23,7 +23,6 @@ local logo <const> = playdate.graphics.image.new("images/Crordle logo")
 -- An 8x8 pattern that has a white background with a single block dot (approximately) in the center
 local dotPattern <const> = {0xFF, 0xFF, 0xFF, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF}
 
--- Valid guesses. The daily solution comes from NYT over HTTPS.
 local wordList <const> = import "words"
 
 -- UI state determines where we direct our inputs, e.g. into the game or into "UI-y" stuff like
@@ -77,14 +76,11 @@ local submitButton <const> = SubmitButton()
 -- Modal assists with displaying pop-up, focus-stealing messages to the player.
 local modal <const> = Modal()
 
--- Holds our current game object. Instantiated after the daily solution arrives.
 local game
 
--- Cached official puzzle. Reused for "New game" on the same NY calendar day.
 local cachedDate = nil
 local cachedWord = nil
 
--- http.new cannot run at load time or from an input handler. Set this and fetch from update.
 local fetchPending = true
 
 -- Draw our static UI elements
@@ -231,7 +227,7 @@ local function beginPlaying(word)
                 return
             end
 
-            game:fillCurrentWord(probeGuess)
+            game:fillRowForSmoke(probeGuess)
             selection:moveTo(game:getCurrentRow(), game:getCurrentPosition())
             game:transitionTo(kGameStateSubmittingWord)
             game:transitionTo(kGameStateCheckingEntry)
@@ -273,11 +269,10 @@ local function requestPuzzle()
     cachedDate = nil
     cachedWord = nil
     uiState = kUIStateLoadingPuzzle
-    modal:displayMessage("Fetching the " .. nytWordleDate() .. " Wordle…", false)
+    modal:displayLoading("Fetching the " .. nytWordleDate() .. " Wordle…")
     fetchPending = true
 end
 
--- Start a new game of today's official puzzle. Re-fetch if the NY date rolled over.
 local function resetGame()
     local today = nytWordleDate()
 
@@ -292,7 +287,7 @@ end
 local function startPendingFetch()
     fetchPending = false
     uiState = kUIStateLoadingPuzzle
-    modal:displayMessage("Fetching the " .. nytWordleDate() .. " Wordle…", false)
+    modal:displayLoading("Fetching the " .. nytWordleDate() .. " Wordle…")
 
     fetchNytWordle(
         function (word, date)
@@ -319,7 +314,6 @@ end
 
 -- Handles all input based on current game and UI state.
 local function handleInput()
-    -- Loading has no controls. Retry is deferred to update so http.new is not called from input.
     if uiState == kUIStateLoadingPuzzle then
         return
     end
@@ -420,8 +414,7 @@ local function handleInput()
     end
 end
 
--- First paint is the loading modal. Fetch starts on the first update.
-modal:displayMessage("Fetching the " .. nytWordleDate() .. " Wordle…", false)
+modal:displayLoading("Fetching the " .. nytWordleDate() .. " Wordle…")
 
 function playdate.update()
     if fetchPending then

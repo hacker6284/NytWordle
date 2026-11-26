@@ -1,6 +1,3 @@
--- wordleFetch.lua
--- HTTPS GET of the official NYT Wordle JSON. Call only from playdate.update.
-
 import "support"
 import "nytDate"
 
@@ -154,10 +151,13 @@ local function onClosed()
     settle(err or "Connection closed")
 end
 
-function fetchNytWordle(success, failure)
-    -- Ignore callbacks from a previous in-flight request before opening another.
+local function abandonInFlight()
     settled = true
     closeConn()
+end
+
+function fetchNytWordle(success, failure)
+    abandonInFlight()
 
     onSuccess = success
     onFailure = failure

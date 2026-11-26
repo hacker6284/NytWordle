@@ -31,22 +31,12 @@ function Modal:init()
     -- The text to render in the prompt to dismiss the modal
     local buttonText = nil
 
-    -- Loading uses a modal with no dismiss control.
     local showButton = true
 
-    -- Pops a modal with the provided content. Pass false for newButtonText to hide the button.
-    local function displayMessage(self, newMessage, newButtonText)
+    local function show(self, newMessage, newButtonText, withButton)
         message = newMessage
-
-        if newButtonText == false then
-            showButton = false
-            buttonText = nil
-        else
-            showButton = true
-            buttonText = newButtonText
-        end
-
-        -- Count the number of lines in the message so we can correctly offset where we draw it.
+        showButton = withButton
+        buttonText = newButtonText
         lines = 1
 
         for _ in message:gmatch("\n") do
@@ -54,6 +44,14 @@ function Modal:init()
         end
 
         sprite:markDirty()
+    end
+
+    local function displayMessage(self, newMessage, newButtonText)
+        show(self, newMessage, newButtonText, true)
+    end
+
+    local function displayLoading(self, newMessage)
+        show(self, newMessage, nil, false)
     end
 
     local function dismiss(self)
@@ -118,5 +116,6 @@ function Modal:init()
     sprite:add()
 
     self.displayMessage = displayMessage
+    self.displayLoading = displayLoading
     self.dismiss = dismiss
 end

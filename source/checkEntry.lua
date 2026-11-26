@@ -72,8 +72,9 @@ function checkEntry(enteredWord, correctWord, wordList)
         letters = {}
     }
 
-    -- The official solution is always a legal guess, even if it is newer than our word list.
-    if enteredWord ~= correctWord and table.indexOfElement(wordList, enteredWord) == nil then
+    local isOfficialAnswer <const> = enteredWord == correctWord
+
+    if not isOfficialAnswer and table.indexOfElement(wordList, enteredWord) == nil then
         results.state = kWordStateNotInList
 
         return results
