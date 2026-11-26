@@ -36,11 +36,11 @@ class('Game', {
     state = kGameStateEnteringWord
 }).extends()
 
-function Game:init(solutionList, wordList, userData)
+function Game:init(word, wordList, userData)
     Game.super.init(self)
 
-    -- Set the word for the game at random.
-    self.word = table.randomElement(solutionList)
+    -- Official NYT solution for the current America/New_York Wordle day.
+    self.word = word
 
     if playdate.isSimulator then
         print(self.word)
@@ -224,6 +224,19 @@ function Game:init(solutionList, wordList, userData)
         end
     end
 
+    -- Simulator smoke helper. Puts a full word on the current row without cranking.
+    local function fillCurrentWord(self, word)
+        assert(#word == letterCount)
+
+        for position = 1, letterCount do
+            board[currentRow][position].inPlay = true
+            board[currentRow][position]:setLetter(word:sub(position, position):upper())
+        end
+
+        currentPosition = letterCount
+        self:updatePieces()
+    end
+
     -- Bind public methods
     self.registerEventHandler = registerEventHandler
     self.getCurrentRow = getCurrentRow
@@ -233,5 +246,6 @@ function Game:init(solutionList, wordList, userData)
     self.moveLetter = moveLetter
     self.movePosition = movePosition
     self.updatePieces = updatePieces
+    self.fillCurrentWord = fillCurrentWord
     self.tearDown = tearDown
 end

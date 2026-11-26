@@ -72,9 +72,8 @@ function checkEntry(enteredWord, correctWord, wordList)
         letters = {}
     }
 
-    -- Check if the word is in our list.
-    if table.indexOfElement(wordList, enteredWord) == nil then
-        -- If it's not, we can exit immediately.
+    -- The official solution is always a legal guess, even if it is newer than our word list.
+    if enteredWord ~= correctWord and table.indexOfElement(wordList, enteredWord) == nil then
         results.state = kWordStateNotInList
 
         return results

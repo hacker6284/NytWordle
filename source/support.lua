@@ -18,6 +18,8 @@ kGameStateLost = 4
 
 kUIStatePlayingGame = 0
 kUIStateDisplayingModal = 1
+kUIStateLoadingPuzzle = 2
+kUIStatePuzzleError = 3
 
 kEventGameStateDidTransition = 0
 kEventEnteredWordNotInList = 1

@@ -31,10 +31,20 @@ function Modal:init()
     -- The text to render in the prompt to dismiss the modal
     local buttonText = nil
 
-    -- Pops a modal with the provided content
+    -- Loading uses a modal with no dismiss control.
+    local showButton = true
+
+    -- Pops a modal with the provided content. Pass false for newButtonText to hide the button.
     local function displayMessage(self, newMessage, newButtonText)
         message = newMessage
-        buttonText = newButtonText
+
+        if newButtonText == false then
+            showButton = false
+            buttonText = nil
+        else
+            showButton = true
+            buttonText = newButtonText
+        end
 
         -- Count the number of lines in the message so we can correctly offset where we draw it.
         lines = 1
@@ -80,23 +90,24 @@ function Modal:init()
                 kTextAlignment.center
             )
 
-            -- Draw the dismiss button
-            gfx.setFont(fonts.small)
+            if showButton then
+                gfx.setFont(fonts.small)
 
-            local buttonText <const> = buttonText or "OK"
-            local buttonTextWidth <const> = fonts.small:getTextWidth(buttonText)
+                local buttonText <const> = buttonText or "OK"
+                local buttonTextWidth <const> = fonts.small:getTextWidth(buttonText)
 
-            gfx.drawText(
-                "Ⓐ",
-                self.width - buttonTextWidth - buttonIconWidth - buttonMargin.x - buttonMargin.inner,
-                self.height - smallFontHeight - buttonMargin.y
-            )
+                gfx.drawText(
+                    "Ⓐ",
+                    self.width - buttonTextWidth - buttonIconWidth - buttonMargin.x - buttonMargin.inner,
+                    self.height - smallFontHeight - buttonMargin.y
+                )
 
-            gfx.drawText(
-                buttonText,
-                self.width - buttonTextWidth - buttonMargin.x,
-                self.height - smallFontHeight - buttonMargin.y
-            )
+                gfx.drawText(
+                    buttonText,
+                    self.width - buttonTextWidth - buttonMargin.x,
+                    self.height - smallFontHeight - buttonMargin.y
+                )
+            end
         end)
     end
 
