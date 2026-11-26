@@ -7,7 +7,6 @@ local USESSL <const> = true
 local REASON <const> = "Load today's NYT Wordle"
 local HEADERS <const> = {
     ["Accept"] = "application/json",
-    ["User-Agent"] = "NytWordle/1.0 (Playdate)",
 }
 
 local conn = nil

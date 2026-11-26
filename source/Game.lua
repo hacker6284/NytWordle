@@ -41,10 +41,6 @@ function Game:init(word, wordList, userData)
 
     self.word = word
 
-    if playdate.isSimulator then
-        print(self.word)
-    end
-
     -- Set default event handlers so we don't have to check if they're defined before firing them.
     local eventHandlers = {
         [kEventGameStateDidTransition] = function () end,

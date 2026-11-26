@@ -294,10 +294,6 @@ local function startPendingFetch()
             cachedDate = date
             cachedWord = word
 
-            if playdate.isSimulator then
-                print(cachedDate .. " " .. cachedWord)
-            end
-
             beginPlaying(word)
         end,
         function (message)
